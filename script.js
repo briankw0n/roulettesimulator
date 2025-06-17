@@ -1,144 +1,181 @@
-const wheel = document.getElementById('wheel');
-const spinButton = document.getElementById('spin-button');
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+const spinBtn = document.getElementById("spinBtn");
+const restartBtn = document.getElementById("restartBtn");
+const betColorSelect = document.getElementById("betColor");
+const betAmountInput = document.getElementById("betAmount");
+const moneyDisplay = document.getElementById("moneyDisplay");
+const resultDisplay = document.getElementById("result");
 
-const numberElements = wheel.querySelectorAll('.number');
-let rotationAngle = 0;
+const numbers = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24,
+  16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
+];
 
-numberElements.forEach((number, i) => {
-  const angle = (360 / numberElements.length) * i;
-  number.style.transform = `rotate(${angle}deg) translateY(-240px)`;
-});
+const redNumbers = new Set([
+  1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
+]);
+const blackNumbers = new Set([
+  2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35,
+]);
 
-spinButton.addEventListener('click', spinWheel);
+const segmentAngle = (2 * Math.PI) / numbers.length;
+const pointerAngle = (3 * Math.PI) / 2;
 
-const rouletteWheel = {
-  0: { color: 'green', degreeRange: [0, 9] },
-  32: { color: 'red', degreeRange: [9, 18] },
-  15: { color: 'black', degreeRange: [18, 27] },
-  19: { color: 'red', degreeRange: [27, 36] },
-  4: { color: 'black', degreeRange: [36, 45] },
-  21: { color: 'red', degreeRange: [45, 54] },
-  2: { color: 'black', degreeRange: [54, 63] },
-  25: { color: 'red', degreeRange: [63, 72] },
-  17: { color: 'black', degreeRange: [72, 81] },
-  34: { color: 'red', degreeRange: [81, 90] },
-  6: { color: 'black', degreeRange: [90, 99] },
-  27: { color: 'red', degreeRange: [99, 108] },
-  13: { color: 'black', degreeRange: [108, 117] },
-  36: { color: 'red', degreeRange: [117, 126] },
-  11: { color: 'black', degreeRange: [126, 135] },
-  30: { color: 'red', degreeRange: [135, 144] },
-  8: { color: 'black', degreeRange: [144, 153] },
-  23: { color: 'red', degreeRange: [153, 162] },
-  10: { color: 'black', degreeRange: [162, 171] },
-  5: { color: 'red', degreeRange: [171, 180] },
-  24: { color: 'black', degreeRange: [180, 189] },
-  16: { color: 'red', degreeRange: [189, 198] },
-  33: { color: 'black', degreeRange: [198, 207] },
-  1: { color: 'red', degreeRange: [207, 216] },
-  20: { color: 'black', degreeRange: [216, 225] },
-  14: { color: 'red', degreeRange: [225, 234] },
-  31: { color: 'black', degreeRange: [234, 243] },
-  9: { color: 'red', degreeRange: [243, 252] },
-  22: { color: 'black', degreeRange: [252, 261] },
-  18: { color: 'red', degreeRange: [261, 270] },
-  29: { color: 'black', degreeRange: [270, 279] },
-  7: { color: 'red', degreeRange: [279, 288] },
-  28: { color: 'black', degreeRange: [288, 297] },
-  12: { color: 'red', degreeRange: [297, 306] },
-  35: { color: 'black', degreeRange: [306, 315] },
-  3: { color: 'red', degreeRange: [315, 324] },
-  26: { color: 'black', degreeRange: [324, 333] },
-};
+let currentAngle = 0;
+let spinning = false;
+let money = 100;
 
-function getRandomDuration(min, max) {
-  return Math.random() * (max - min) + min;
+function resizeCanvas() {
+  const maxSize = Math.min(window.innerWidth * 0.9, 400);
+  canvas.width = maxSize;
+  canvas.height = maxSize;
+  drawWheel();
 }
 
-function findNumberAndColor(degree) {
-  let foundNumber;
-  let foundColor;
+window.addEventListener("resize", resizeCanvas);
 
-  for (const number in rouletteWheel) {
-    const pocket = rouletteWheel[number];
-    const degreeRange = pocket.degreeRange;
+function drawWheel() {
+  const radius = canvas.width / 2;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (degree >= degreeRange[0] && degree < degreeRange[1]) {
-      foundNumber = number;
-      foundColor = pocket.color;
-      break;
-    }
-  }
+  ctx.save();
+  ctx.translate(radius, radius);
+  ctx.rotate(currentAngle + pointerAngle - segmentAngle / 2);
 
-  return {
-    number: foundNumber,
-    color: foundColor,
-  };
+  numbers.forEach((num, i) => {
+    const startAngle = i * segmentAngle;
+    const endAngle = startAngle + segmentAngle;
+
+    let fillStyle = "black";
+    if (num === 0) fillStyle = "green";
+    else if (redNumbers.has(num)) fillStyle = "red";
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius - 10, startAngle, endAngle, false);
+    ctx.closePath();
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.fillStyle = "white";
+    ctx.font = `${radius / 12}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const textRadius = radius - 40;
+    const angle = startAngle + segmentAngle / 2;
+    const x = textRadius * Math.cos(angle);
+    const y = textRadius * Math.sin(angle);
+
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI / 2);
+    ctx.fillText(num.toString(), 0, 0);
+    ctx.restore();
+  });
+
+  ctx.restore();
 }
 
 function spinWheel() {
-  const minDuration = 4;
-  const maxDuration = 8;
+  if (spinning) return;
+  const betAmount = parseInt(betAmountInput.value, 10);
+  if (isNaN(betAmount) || betAmount < 1) {
+    alert("Enter a valid bet amount (>=1)");
+    return;
+  }
+  if (betAmount > money) {
+    alert("You don't have enough money for that bet!");
+    return;
+  }
 
-  const spinDuration = getRandomDuration(minDuration, maxDuration);
-  
-  let rotationAngle = 360 * spinDuration;
-  wheel.style.transform = `rotate(${rotationAngle}deg)`;
-  wheel.style.transition = `transform ${spinDuration}s ease-out`;
+  spinning = true;
+  spinBtn.disabled = true;
+  betColorSelect.disabled = true;
+  betAmountInput.disabled = true;
+  resultDisplay.textContent = "";
 
-  console.log(rotationAngle);
+  const rotations = Math.floor(Math.random() * 6) + 7;
+  const randomSegment = Math.floor(Math.random() * numbers.length);
 
-  totalRotations = rotationAngle % 360;
+  const finalAngle = rotations * 2 * Math.PI - randomSegment * segmentAngle;
 
-  console.log(totalRotations);
+  const duration = 10000;
+  const start = performance.now();
 
-  const result = findNumberAndColor(totalRotations);
+  function animate(now) {
+    const elapsed = now - start;
+    if (elapsed >= duration) {
+      currentAngle = finalAngle % (2 * Math.PI);
+      drawWheel();
+      spinning = false;
+      spinBtn.disabled = false;
+      betColorSelect.disabled = false;
+      betAmountInput.disabled = false;
 
-  console.log('Landed on number: ' + result.number);
-  console.log('Landed color: ' + result.color);
+      const winningNumber = numbers[randomSegment];
+      showResult(winningNumber, betAmount);
+      return;
+    }
 
-  // const minDuration = 4; // Minimum duration in seconds
-  // const maxDuration = 8; // Maximum duration in seconds
-  // const transitionDuration = getRandomDuration(minDuration, maxDuration);
+    const t = elapsed / duration;
+    const easeOut = 1 - Math.pow(1 - t, 3);
+    currentAngle = easeOut * finalAngle;
+    drawWheel();
+    requestAnimationFrame(animate);
+  }
 
-  // console.log("Duration: ", transitionDuration);
-
-  // rotationAngle = 360 * transitionDuration;
-
-  // console.log("Total Rotation: ", rotationAngle);
-
-  // wheel.style.transition = `transform ${transitionDuration}s ease-out`;
-  // wheel.style.transform = `rotate(${rotationAngle}deg)`;
-
-  // const currentRotation = rotationAngle % 360;
-
-  // console.log("Rotation: ", currentRotation);
-
-  // // Ensure that the result is a non-negative angle
-  // const normalizedRotation = (currentRotation + 360) % 360;
-
-  // // Initialize variables to store the landed number and color
-  // let landedNumber = '';
-  // let landedColor = '';
-
-  // // Iterate through the rouletteWheel dictionary
-  // for (const number in rouletteWheel) {
-  //   if (rouletteWheel.hasOwnProperty(number)) {
-  //     const pocket = rouletteWheel[number];
-  //     const degreeRange = pocket.degreeRange;
-
-  //     if (normalizedRotation >= degreeRange[0] && normalizedRotation < degreeRange[1]) {
-  //       landedNumber = number;
-  //       landedColor = pocket.color;
-  //       break;
-  //     }
-  //   }
-  // }
-
-  // setTimeout(() => {
-  //   console.log('Landed on number: ' + landedNumber);
-  //   console.log('Landed color: ' + landedColor);
-  // }, transitionDuration * 1000);
+  requestAnimationFrame(animate);
 }
 
+function showResult(number, betAmount) {
+  let colorWon = null;
+  if (number === 0) colorWon = "green";
+  else if (redNumbers.has(number)) colorWon = "red";
+  else colorWon = "black";
 
+  const betColor = betColorSelect.value;
+  if (colorWon === betColor) {
+    money += betAmount;
+    resultDisplay.textContent = `You won! Number: ${number} (${colorWon}) +$${betAmount}`;
+  } else {
+    money -= betAmount;
+    resultDisplay.textContent = `You lost! Number: ${number} (${colorWon}) -$${betAmount}`;
+  }
+
+  updateMoney();
+
+  if (money <= 0) {
+    resultDisplay.textContent += " Game over! You ran out of money.";
+    spinBtn.style.display = "none";
+    restartBtn.style.display = "inline-block";
+    betColorSelect.disabled = true;
+    betAmountInput.disabled = true;
+  }
+}
+
+function updateMoney() {
+  moneyDisplay.textContent = `Money: $${money}`;
+}
+
+spinBtn.addEventListener("click", spinWheel);
+
+restartBtn.addEventListener("click", () => {
+  money = 100;
+  currentAngle = 0;
+  updateMoney();
+  resultDisplay.textContent = "";
+  spinBtn.style.display = "inline-block";
+  restartBtn.style.display = "none";
+  betColorSelect.disabled = false;
+  betAmountInput.disabled = false;
+  drawWheel();
+});
+
+updateMoney();
+resizeCanvas();
+drawWheel();
